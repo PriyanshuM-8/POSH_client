@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 10%;
+    --card-foreground: 210 40% 96%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 217 91% 60%;
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  h1, h2, h3, h4, h5 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-navy-800/60 backdrop-blur-xl border border-white/60 dark:border-white/10;
+  }
+  .glass-solid {
+    @apply bg-white/90 dark:bg-navy-800/90 backdrop-blur-md border border-slate-200/70 dark:border-white/10;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-600 rounded-full;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, rgba(226,232,240,0.4) 25%, rgba(226,232,240,0.7) 37%, rgba(226,232,240,0.4) 63%);
+    background-size: 700px 100%;
+    @apply animate-shimmer;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 via-primary-500 to-accent bg-clip-text text-transparent;
+  }
+}
