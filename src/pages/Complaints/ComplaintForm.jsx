@@ -147,7 +147,7 @@ export default function ComplaintForm() {
       // Upload evidence files if any
       if (files.length > 0 && complaint?._id) {
         const formData = new FormData()
-        files.forEach(f => formData.append('files', f))
+        files.forEach(f => formData.append('evidence', f))
         await uploadEvidenceService(complaint._id, formData).catch(() => {
           toast.warning('Complaint submitted but evidence upload failed. You can upload later.')
         })

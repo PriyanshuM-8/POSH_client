@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Building2, ShieldCheck, FileText, Paperclip, Gavel,
   MessageSquare, ClipboardList, Check, AlertCircle,
-  Calendar, Users, Info, RefreshCw, Download, Lock, Unlock, Archive, Send, FileCheck
+  Calendar, Users, Info, RefreshCw, Download, Lock, Unlock, Archive, Send, FileCheck,
+  Eye, Image as ImageIcon, FileAudio, Video, ExternalLink, X as XIcon, ZoomIn, File as FileIcon
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -136,6 +137,9 @@ export default function CaseDetails() {
   const [feedbackText, setFeedbackText] = useState('')
 
   const [downloadingPDF, setDownloadingPDF] = useState(false)
+
+  // ─── Evidence Lightbox ────────────────────────────────────────────
+  const [lightbox, setLightbox] = useState(null) // { url, name, type }
 
   const handleDownloadPDF = async () => {
     setDownloadingPDF(true)
@@ -582,6 +586,34 @@ export default function CaseDetails() {
     caseData?.respondent === currentUser?._id || caseData?.respondent?._id === currentUser?._id ||
     complaint?.complainant === currentUser?._id || complaint?.complainant?._id === currentUser?._id
 
+  // Deduplicated merged evidence list (case + complaint, unique by _id)
+  const allEvidence = useMemo(() => {
+    const merged = [
+      ...(caseData?.evidence || []),
+      ...(complaint?.evidence || []),
+    ]
+    const seen = new Set()
+    return merged.filter(e => {
+      if (!e || typeof e !== 'object' || !e._id) return false
+      const id = e._id?.toString()
+      if (seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+  }, [caseData?.evidence, complaint?.evidence])
+
+  // Helper: get file category from fileType or mimeType
+  const getFileCategory = (ev) => {
+    const t = (ev.fileType || '').toUpperCase()
+    const m = (ev.mimeType || '').toLowerCase()
+    if (t === 'IMAGE' || m.startsWith('image/')) return 'IMAGE'
+    if (t === 'PDF' || m === 'application/pdf') return 'PDF'
+    if (t === 'AUDIO' || m.startsWith('audio/')) return 'AUDIO'
+    if (t === 'VIDEO' || m.startsWith('video/')) return 'VIDEO'
+    return 'DOCUMENT'
+  }
+
+
   if (error) {
     return <ErrorState status={500} message={error} onRetry={fetchData} />
   }
@@ -941,43 +973,70 @@ export default function CaseDetails() {
                       </div>
                     ) : (
                       <>
+                        {/* ── Header Row ───────────────────────────────── */}
                         <div className="flex justify-between items-center">
-                          <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Submitted Case Evidence</p>
+                          <div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Submitted Case Evidence</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{allEvidence.length} file(s) attached</p>
+                          </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-400">Status:</span>
+                            <span className="text-xs text-slate-400">Review Status:</span>
                             <Badge variant={caseData?.evidenceReviewStatus === 'APPROVED' ? 'success' : caseData?.evidenceReviewStatus === 'MORE_REQUIRED' ? 'warning' : 'neutral'}>
                               {caseData?.evidenceReviewStatus || 'PENDING'}
                             </Badge>
                           </div>
                         </div>
 
-                        {/* Interactive Review Banner for Committee & Admin */}
-                        {caseData && caseData.evidenceReviewStatus === 'PENDING' && (currentUser?.role === 'POSH_ADMIN' || isMemberOfCommittee) && (
-                          <div className="bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="text-xs">
-                              <p className="font-bold text-slate-800 dark:text-slate-200">Evidence Awaiting Committee Review</p>
-                              <p className="text-slate-500 mt-0.5">Please review all files. Confirm sufficiency or request modifications.</p>
+                        {/* ── Review Action Banner (Committee + Admin) ── */}
+                        {caseData && caseData.evidenceReviewStatus === 'PENDING' && allEvidence.length > 0 && (currentUser?.role === 'POSH_ADMIN' || isMemberOfCommittee) && (
+                          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/20">
+                                <ShieldCheck className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div className="text-xs">
+                                <p className="font-bold text-slate-800 dark:text-slate-200">Evidence Awaiting Review</p>
+                                <p className="text-slate-500 mt-0.5">Review all files below. Approve if sufficient or request modifications from the complainant.</p>
+                              </div>
                             </div>
                             <div className="flex gap-2 shrink-0">
                               <Button size="sm" variant="success" onClick={() => handleEvidenceReview('APPROVED')}>
-                                Approve Evidence
+                                <Check className="h-3.5 w-3.5" /> Approve Evidence
                               </Button>
                               <Button size="sm" variant="warning" onClick={() => handleEvidenceReview('MORE_REQUIRED')}>
-                                Request More Evidence
+                                Request More
                               </Button>
                             </div>
                           </div>
                         )}
 
-                        {/* Request Form if more required and logged in user is complainant */}
-                        {caseData?.evidenceReviewStatus === 'MORE_REQUIRED' && (currentUser?._id === caseData?.complainant?._id || currentUser?._id === caseData?.complainant) && (
-                          <Card className="border-dashed border-2 border-amber-300 dark:border-amber-500/20 bg-amber-50/5 p-5">
-                            <form onSubmit={handleUploadEvidence} className="space-y-4">
-                              <div className="text-xs">
-                                <h4 className="font-bold text-amber-800 dark:text-amber-400">Upload Additional Requested Evidence</h4>
-                                <p className="text-slate-500 mt-0.5">Select files and submit them to clear the evidence request pending status.</p>
+                        {/* ── Already Approved Banner ───────────────── */}
+                        {caseData?.evidenceReviewStatus === 'APPROVED' && (
+                          <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 p-4">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-500/20">
+                              <Check className="h-4 w-4 text-emerald-600" />
+                            </div>
+                            <div className="text-xs">
+                              <p className="font-bold text-emerald-800 dark:text-emerald-300">Evidence Approved</p>
+                              <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">All submitted evidence has been reviewed and approved by the committee.</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── More Required Banner + Upload Form ───── */}
+                        {caseData?.evidenceReviewStatus === 'MORE_REQUIRED' && (
+                          <div className="rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-900/5 p-5 space-y-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-500/20">
+                                <RefreshCw className="h-4 w-4 text-amber-600" />
                               </div>
-                              <div className="space-y-3">
+                              <div className="text-xs">
+                                <h4 className="font-bold text-amber-800 dark:text-amber-400">Additional Evidence Requested</h4>
+                                <p className="text-slate-500 mt-0.5">The committee has requested more documents. Please upload the required files.</p>
+                              </div>
+                            </div>
+                            {(currentUser?._id === caseData?.complainant?._id || currentUser?._id === caseData?.complainant) && (
+                              <form onSubmit={handleUploadEvidence} className="space-y-3">
                                 <input
                                   type="file"
                                   multiple
@@ -989,55 +1048,214 @@ export default function CaseDetails() {
                                   placeholder="Describe the additional evidence being uploaded..."
                                   value={uploadDescription}
                                   onChange={(e) => setUploadDescription(e.target.value)}
-                                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                  className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                                   rows={3}
                                 />
-                              </div>
-                              <Button type="submit" size="sm" loading={uploading} className="bg-amber-600 hover:bg-amber-700 text-white">
-                                Submit Requested Evidence
-                              </Button>
-                            </form>
-                          </Card>
+                                <Button type="submit" size="sm" loading={uploading} className="bg-amber-600 hover:bg-amber-700 text-white">
+                                  Submit Additional Evidence
+                                </Button>
+                              </form>
+                            )}
+                          </div>
                         )}
 
-                        {/* Show evidence from caseData or complaint */}
-                        {caseData?.evidence?.length > 0 || complaint?.evidence?.length > 0 ? (
-                          <div className="space-y-3.5">
-                            {[...(caseData?.evidence || []), ...(complaint?.evidence || [])].map((e, i) => (
-                              <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-slate-100 p-4 dark:border-white/5 bg-slate-50/20 gap-3">
-                                <div className="flex items-start gap-3">
-                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100/50 dark:bg-blue-500/10">
-                                    <ShieldCheck className="h-4.5 w-4.5 text-blue-600" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{e.originalName || e.fileName}</p>
-                                    {e.description && <p className="text-xs text-slate-500 mt-0.5">{e.description}</p>}
-                                    <p className="text-[10px] text-slate-400 mt-1">
-                                      Size: {e.fileSize ? `${(e.fileSize / 1024).toFixed(1)} KB` : '—'} · Uploaded by: {e.uploadedBy?.fullName || 'Anonymous'} · Date: {new Date(e.createdAt || e.uploadedAt).toLocaleDateString()}
-                                    </p>
+                        {/* ── Evidence File Cards ───────────────────── */}
+                        {allEvidence.length > 0 ? (
+                          <div className="grid grid-cols-1 gap-3">
+                            {allEvidence.map((ev, i) => {
+                              const category = getFileCategory(ev)
+                              const fileUrl = ev.secureUrl || ev.url || null
+                              const fileName = ev.originalName || ev.fileName || 'Evidence File'
+                              const uploaderName = ev.uploadedBy?.fullName || 'Anonymous'
+                              const uploadDate = ev.createdAt ? new Date(ev.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—'
+                              const fileSize = ev.fileSize ? `${(ev.fileSize / 1024).toFixed(1)} KB` : '—'
+
+                              // Category-specific config
+                              const categoryConfig = {
+                                IMAGE:    { icon: ImageIcon,  bg: 'bg-violet-100 dark:bg-violet-500/15', iconColor: 'text-violet-600 dark:text-violet-400', badge: 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300', label: 'Image' },
+                                PDF:      { icon: FileText,   bg: 'bg-red-100 dark:bg-red-500/15',     iconColor: 'text-red-600 dark:text-red-400',     badge: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',     label: 'PDF' },
+                                AUDIO:    { icon: FileAudio,  bg: 'bg-emerald-100 dark:bg-emerald-500/15', iconColor: 'text-emerald-600 dark:text-emerald-400', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300', label: 'Audio' },
+                                VIDEO:    { icon: Video,      bg: 'bg-blue-100 dark:bg-blue-500/15',   iconColor: 'text-blue-600 dark:text-blue-400',   badge: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300',   label: 'Video' },
+                                DOCUMENT: { icon: FileIcon,   bg: 'bg-amber-100 dark:bg-amber-500/15', iconColor: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300', label: 'Document' },
+                              }
+                              const cfg = categoryConfig[category]
+                              const CatIcon = cfg.icon
+
+                              return (
+                                <div key={ev._id || i} className="rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-800/50 shadow-sm overflow-hidden">
+                                  {/* ── Image Thumbnail Preview ─────── */}
+                                  {category === 'IMAGE' && fileUrl && (
+                                    <div
+                                      className="relative w-full h-44 bg-slate-100 dark:bg-slate-700 cursor-zoom-in overflow-hidden group"
+                                      onClick={() => setLightbox({ url: fileUrl, name: fileName, type: 'IMAGE' })}
+                                    >
+                                      <img
+                                        src={fileUrl}
+                                        alt={fileName}
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        onError={(e) => { e.target.style.display = 'none' }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2">
+                                          <ZoomIn className="h-5 w-5 text-slate-700" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* ── Video Preview ───────────────── */}
+                                  {category === 'VIDEO' && fileUrl && (
+                                    <div className="w-full bg-black">
+                                      <video
+                                        src={fileUrl}
+                                        controls
+                                        className="w-full max-h-52 object-contain"
+                                        preload="metadata"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* ── Audio Player ────────────────── */}
+                                  {category === 'AUDIO' && fileUrl && (
+                                    <div className="px-4 pt-4 pb-2">
+                                      <audio
+                                        src={fileUrl}
+                                        controls
+                                        className="w-full h-10"
+                                        preload="metadata"
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* ── File Info Row ────────────────── */}
+                                  <div className="flex items-center justify-between p-4 gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.bg}`}>
+                                        <CatIcon className={`h-5 w-5 ${cfg.iconColor}`} />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[240px]" title={fileName}>
+                                            {fileName}
+                                          </p>
+                                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.badge}`}>
+                                            {cfg.label}
+                                          </span>
+                                          {ev.isVerified && (
+                                            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                              <ShieldCheck className="h-2.5 w-2.5" /> Verified
+                                            </span>
+                                          )}
+                                        </div>
+                                        {ev.description && (
+                                          <p className="text-xs text-slate-500 mt-0.5 truncate">{ev.description}</p>
+                                        )}
+                                        <p className="text-[10px] text-slate-400 mt-0.5">
+                                          {fileSize} · By: <span className="font-medium">{uploaderName}</span> · {uploadDate}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* ── Action Buttons ───────────────── */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {/* View / Open button */}
+                                      {fileUrl && category === 'IMAGE' && (
+                                        <button
+                                          onClick={() => setLightbox({ url: fileUrl, name: fileName, type: 'IMAGE' })}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20 transition-colors"
+                                          title="Preview Image"
+                                        >
+                                          <Eye className="h-3.5 w-3.5" /> Preview
+                                        </button>
+                                      )}
+                                      {fileUrl && (category === 'PDF' || category === 'DOCUMENT') && (
+                                        <a
+                                          href={fileUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 transition-colors"
+                                          title="Open File"
+                                        >
+                                          <ExternalLink className="h-3.5 w-3.5" /> Open
+                                        </a>
+                                      )}
+                                      {/* Download button — always shown */}
+                                      {fileUrl && (
+                                        <a
+                                          href={fileUrl}
+                                          download={fileName}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 transition-colors"
+                                          title="Download"
+                                        >
+                                          <Download className="h-3.5 w-3.5" />
+                                        </a>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <a
-                                    href={e.secureUrl || e.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300"
-                                    title="View / Download"
-                                  >
-                                    <Download className="h-4 w-4" />
-                                  </a>
-                                </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
-                          <EmptyState title="No evidence files submitted" description="No evidence attachments have been added to this case." />
+                          <EmptyState title="No evidence files submitted" description="No evidence attachments have been added to this case yet." />
                         )}
                       </>
                     )}
                   </div>
                 )}
+
+                {/* ─── Image Lightbox Modal ────────────────────────────── */}
+                <AnimatePresence>
+                  {lightbox && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+                      onClick={() => setLightbox(null)}
+                    >
+                      <motion.div
+                        initial={{ scale: 0.92, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.92, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {/* Close button */}
+                        <button
+                          onClick={() => setLightbox(null)}
+                          className="absolute -top-3 -right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg text-slate-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                          <XIcon className="h-4 w-4" />
+                        </button>
+                        {/* Image */}
+                        <img
+                          src={lightbox.url}
+                          alt={lightbox.name}
+                          className="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl"
+                        />
+                        {/* Caption bar */}
+                        <div className="mt-3 flex items-center justify-between w-full max-w-xl px-2">
+                          <p className="text-sm font-medium text-white/80 truncate">{lightbox.name}</p>
+                          <a
+                            href={lightbox.url}
+                            download={lightbox.name}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-3 shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-colors"
+                          >
+                            <Download className="h-3.5 w-3.5" /> Download
+                          </a>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+
 
                 {/* Tab 3: Hearings */}
                 {tab === 'hearings' && (
