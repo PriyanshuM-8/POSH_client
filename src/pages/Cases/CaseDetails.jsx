@@ -1001,7 +1001,12 @@ export default function CaseDetails() {
                         </div>
 
                         {/* ── Review Action Banner (Committee + Admin) ── */}
-                        {caseData && caseData.evidenceReviewStatus === 'PENDING' && allEvidence.length > 0 && (currentUser?.role === 'POSH_ADMIN' || isMemberOfCommittee) && (
+                        {caseData && caseData.evidenceReviewStatus === 'PENDING' && (
+                          currentUser?.role === 'POSH_ADMIN' ||
+                          currentUser?.role === 'IC_MEMBER' ||
+                          currentUser?.role === 'EXTERNAL_MEMBER' ||
+                          isMemberOfCommittee
+                        ) && (
                           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="flex items-start gap-3">
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-500/20">
