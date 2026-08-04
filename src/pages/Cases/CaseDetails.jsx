@@ -877,68 +877,7 @@ export default function CaseDetails() {
                       </div>
                     )}
 
-                    {/* Record Decision Admin Form */}
-                    {currentUser?.role === 'POSH_ADMIN' && caseData?.recommendationReviewStatus === 'APPROVED' && caseData?.status !== 'CLOSED' && (
-                      <Card className="border-emerald-500/20 bg-emerald-50/5">
-                        <CardHeader>
-                          <CardTitle className="text-sm font-bold uppercase tracking-wider text-emerald-600">Record Final Decision & Close Case</CardTitle>
-                          <CardDescription className="text-xs">Statutory requirement: Record organization's decision based on approved recommendation.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <form onSubmit={handleCloseCase} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Final Outcome/Decision</label>
-                                <Input
-                                  required
-                                  value={closeFinalDecision}
-                                  onChange={(e) => setCloseFinalDecision(e.target.value)}
-                                  placeholder="e.g. Complaint Upheld"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Action Taken</label>
-                                <select
-                                  value={closeActionTaken}
-                                  onChange={(e) => setCloseActionTaken(e.target.value)}
-                                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-[#2563EB] focus:outline-none"
-                                >
-                                  <option value="NO_ACTION">No Action</option>
-                                  <option value="WARNING">Warning</option>
-                                  <option value="WRITTEN_WARNING">Written Warning</option>
-                                  <option value="SUSPENSION">Suspension</option>
-                                  <option value="TERMINATION">Termination</option>
-                                  <option value="OTHER">Other</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Effective Date</label>
-                                <Input
-                                  type="date"
-                                  required
-                                  value={closeEffectiveDate}
-                                  onChange={(e) => setCloseEffectiveDate(e.target.value)}
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Closing Remarks (Min 10 chars)</label>
-                              <textarea
-                                required
-                                value={closeRemarks}
-                                onChange={(e) => setCloseRemarks(e.target.value)}
-                                placeholder="Enter closing details and remarks..."
-                                className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-[#2563EB] focus:outline-none"
-                                rows={3}
-                              />
-                            </div>
-                            <Button type="submit" size="sm" variant="success" loading={submitting}>
-                              Record final decision and Close Case
-                            </Button>
-                          </form>
-                        </CardContent>
-                      </Card>
-                    )}
+
 
                     {/* Employee Confidential Feedback Panel */}
                     {caseData?.status === 'CLOSED' && (
@@ -1617,6 +1556,71 @@ export default function CaseDetails() {
                               </form>
                             </CardContent>
                           </Card>
+                        )}
+
+                        {/* Record Decision Admin Form */}
+                        {currentUser?.role === 'POSH_ADMIN' && caseData?.recommendationReviewStatus === 'APPROVED' && caseData?.status !== 'CLOSED' && (
+                          <div className="mt-6">
+                            <Card className="border-emerald-500/20 bg-emerald-50/5">
+                              <CardHeader>
+                                <CardTitle className="text-sm font-bold uppercase tracking-wider text-emerald-600">Record Final Decision & Close Case</CardTitle>
+                                <CardDescription className="text-xs">Statutory requirement: Record organization's decision based on approved recommendation.</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <form onSubmit={handleCloseCase} className="space-y-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Final Outcome/Decision</label>
+                                      <Input
+                                        required
+                                        value={closeFinalDecision}
+                                        onChange={(e) => setCloseFinalDecision(e.target.value)}
+                                        placeholder="e.g. Complaint Upheld"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Action Taken</label>
+                                      <select
+                                        value={closeActionTaken}
+                                        onChange={(e) => setCloseActionTaken(e.target.value)}
+                                        className="w-full text-xs p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-[#2563EB] focus:outline-none"
+                                      >
+                                        <option value="NO_ACTION">No Action</option>
+                                        <option value="WARNING">Warning</option>
+                                        <option value="WRITTEN_WARNING">Written Warning</option>
+                                        <option value="SUSPENSION">Suspension</option>
+                                        <option value="TERMINATION">Termination</option>
+                                        <option value="OTHER">Other</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Effective Date</label>
+                                      <Input
+                                        type="date"
+                                        required
+                                        value={closeEffectiveDate}
+                                        onChange={(e) => setCloseEffectiveDate(e.target.value)}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Closing Remarks (Min 10 chars)</label>
+                                    <textarea
+                                      required
+                                      value={closeRemarks}
+                                      onChange={(e) => setCloseRemarks(e.target.value)}
+                                      placeholder="Enter closing details and remarks..."
+                                      className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-1 focus:ring-[#2563EB] focus:outline-none"
+                                      rows={3}
+                                    />
+                                  </div>
+                                  <Button type="submit" size="sm" variant="success" loading={submitting}>
+                                    Record final decision and Close Case
+                                  </Button>
+                                </form>
+                              </CardContent>
+                            </Card>
+                          </div>
                         )}
                       </>
                     )}
