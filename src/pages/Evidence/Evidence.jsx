@@ -32,13 +32,16 @@ export default function Evidence() {
     cases.forEach((c) => {
       if (c.evidence && c.evidence.length > 0) {
         c.evidence.forEach((ev, idx) => {
+          // ev can be populated object or just an ObjectId string (fallback)
+          if (typeof ev !== 'object' || !ev._id) return
           items.push({
             id: ev._id || `EV-${c.caseId}-${idx + 1}`,
-            fileName: ev.fileName || 'Evidence Document',
-            fileUrl: ev.fileUrl,
+            fileName: ev.originalName || ev.fileName || 'Evidence Document',
+            fileUrl: ev.secureUrl || ev.url || null,
+            fileType: ev.fileType || 'DOCUMENT',
             caseId: c.caseId,
-            date: new Date(ev.uploadedAt || c.createdAt).toLocaleDateString(),
-            status: ev.status === 'APPROVED' ? 'Verified' : 'Pending Review'
+            date: new Date(ev.createdAt || c.createdAt).toLocaleDateString('en-IN'),
+            status: ev.isVerified ? 'Verified' : 'Pending Review',
           })
         })
       }

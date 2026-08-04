@@ -1000,9 +1000,10 @@ export default function CaseDetails() {
                           </Card>
                         )}
 
-                        {caseData?.evidence?.length > 0 ? (
+                        {/* Show evidence from caseData or complaint */}
+                        {caseData?.evidence?.length > 0 || complaint?.evidence?.length > 0 ? (
                           <div className="space-y-3.5">
-                            {caseData.evidence.map((e, i) => (
+                            {[...(caseData?.evidence || []), ...(complaint?.evidence || [])].map((e, i) => (
                               <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-slate-100 p-4 dark:border-white/5 bg-slate-50/20 gap-3">
                                 <div className="flex items-start gap-3">
                                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100/50 dark:bg-blue-500/10">

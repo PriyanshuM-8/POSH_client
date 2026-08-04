@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import {
   LayoutGrid, Users, ShieldAlert, FileText, Award, TrendingUp,
   Activity, CheckCircle, RefreshCw, UserPlus, Search, Edit,
-  Trash2, Mail, Phone, AlertTriangle, Building2, Scale
+  Trash2, Mail, Phone, AlertTriangle, Building2, Scale, Loader2 
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -30,6 +30,8 @@ export default function OwnerDashboard() {
   const [unassignedComplaints, setUnassignedComplaints] = useState([])
   const [adminComplaints, setAdminComplaints] = useState([])
   const [loading, setLoading] = useState(true)
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false)
@@ -130,8 +132,10 @@ export default function OwnerDashboard() {
   useEffect(() => { fetchData() }, [])
 
   const handleCreateAdmin = async () => {
+    setAdminLoading(true);
     try {
       const res = await invitePoshAdminService(formData)
+      setSent(false)
       toast.success('POSH Admin invitation sent successfully!')
       setShowCreateAdminModal(false)
       setFormData({ fullName: '', email: '', phone: '', department: '', designation: '' })
@@ -747,8 +751,20 @@ export default function OwnerDashboard() {
             <Button variant="outline" onClick={() => setShowCreateAdminModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateAdmin} disabled={!formData.email}>
-              Send Invitation
+            <Button onClick={handleCreateAdmin} disabled={!formData.email} 
+             
+             className={sent?"bg-green-600 hover:bg-green-700 text-white":""}
+            >
+              {adminLoading?(
+                <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                 Sending...
+                </>
+              ):sent?(
+                 "Invitation Sent ✓"
+              ):(
+                "Send Invitation"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
