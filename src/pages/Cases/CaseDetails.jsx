@@ -576,15 +576,28 @@ export default function CaseDetails() {
   const assignedCommittee = caseData?.assignedCommittee
 
   // Helper authorization checks
-  const isMemberOfCommittee = assignedCommittee?.members?.some(
-    m => m.user === currentUser?._id || m.user?._id === currentUser?._id
-  ) || assignedCommittee?.chairperson === currentUser?._id || assignedCommittee?.chairperson?._id === currentUser?._id
+  const isMemberOfCommittee = (() => {
+    if (!assignedCommittee) return false
+    const uid = currentUser?._id?.toString()
+    if (!uid) return false
+    // Check members array (handles both populated objects and raw ObjectIds)
+    const inMembers = assignedCommittee.members?.some(m => {
+      const mId = (m.user?._id || m.user)?.toString()
+      return mId === uid
+    })
+    // Check chairperson field (can be populated object or ObjectId)
+    const isChairperson = (assignedCommittee.chairperson?._id || assignedCommittee.chairperson)?.toString() === uid
+    return inMembers || isChairperson
+  })()
 
   const isAuthorizedForEvidence = currentUser?.role === 'POSH_ADMIN' ||
+    currentUser?.role === 'IC_MEMBER' ||
+    currentUser?.role === 'EXTERNAL_MEMBER' ||
     isMemberOfCommittee ||
-    caseData?.complainant === currentUser?._id || caseData?.complainant?._id === currentUser?._id ||
-    caseData?.respondent === currentUser?._id || caseData?.respondent?._id === currentUser?._id ||
-    complaint?.complainant === currentUser?._id || complaint?.complainant?._id === currentUser?._id
+    caseData?.complainant === currentUser?._id || caseData?.complainant?._id?.toString() === currentUser?._id?.toString() ||
+    caseData?.respondent === currentUser?._id || caseData?.respondent?._id?.toString() === currentUser?._id?.toString() ||
+    complaint?.complainant === currentUser?._id || complaint?.complainant?._id?.toString() === currentUser?._id?.toString()
+
 
   // Deduplicated merged evidence list (case + complaint, unique by _id)
   const allEvidence = useMemo(() => {
