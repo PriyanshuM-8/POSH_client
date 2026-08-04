@@ -323,7 +323,6 @@ export default function EmployeeManagement() {
                       className="flex h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm dark:border-white/10 dark:bg-white/5 dark:text-slate-200 focus:outline-none"
                     >
                       <option value="EMPLOYEE">Employee</option>
-                      <option value="POSH_ADMIN">POSH Admin</option>
                       <option value="IC_MEMBER">IC Member</option>
                       <option value="EXTERNAL_MEMBER">External Member</option>
                     </select>

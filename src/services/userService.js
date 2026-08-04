@@ -16,7 +16,8 @@ export const getMyProfileService = async () => {
 }
 
 export const createUserService = async (data) => {
-  const res = await api.post('/users', data)
+  const endpoint = data.role === 'POSH_ADMIN' ? '/auth/invite-posh-admin' : '/auth/invite'
+  const res = await api.post(endpoint, data)
   return res.data.data
 }
 
