@@ -5,7 +5,7 @@ export const Card = React.forwardRef(({ className, glass = false, ...props }, re
   <div
     ref={ref}
     className={cn(
-      'rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-slate-900 shadow-sm transition-shadow',
+      'rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white dark:bg-slate-900 shadow-sm transition-all duration-300 hover:shadow-card hover:-translate-y-0.5',
       glass ? 'glass' : '',
       className
     )}

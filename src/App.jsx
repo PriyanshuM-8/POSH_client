@@ -28,6 +28,7 @@ import MyComplaints from '@/pages/Employee/MyComplaints'
 import MyDocuments from '@/pages/Employee/MyDocuments'
 import MyProfile from '@/pages/Employee/MyProfile'
 import OwnerComplaints from '@/pages/Complaints/OwnerComplaints'
+import OfflineIndicator from '@/components/ui/OfflineIndicator'
 
 // Newly created modules
 import EmployeeManagement from '@/pages/EmployeeManagement/EmployeeManagement'
@@ -55,6 +56,7 @@ function AdminOrCommittee({ element, allowedRoles = [] }) {
 export default function App() {
   return (
     <>
+      <OfflineIndicator />
       <Toaster position="top-right" richColors closeButton />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -26,7 +26,15 @@ import {
   closeCaseService,
   downloadFinalOrderPDFService
 } from '@/services/caseService'
-import { getComplaintByIdService, acceptComplaintService, rejectComplaintService } from '@/services/complaintService'
+import { 
+  getComplaintByIdService, 
+  acceptComplaintService, 
+  rejectComplaintService,
+  requestComplaintWithdrawalService,
+  approveComplaintWithdrawalService,
+  rejectComplaintWithdrawalService,
+  uploadEvidenceService
+} from '@/services/complaintService'
 import { getAllCommitteesService } from '@/services/committeeService'
 import { getAllHearingsService, scheduleHearingService, updateHearingService } from '@/services/hearingService'
 import { toast } from 'sonner'
@@ -244,6 +252,147 @@ export default function CaseDetails() {
         } catch (err) {
           toast.error(formatApiError(err, 'Failed to accept complaint.'))
         }
+      }
+    })
+  }
+
+  // ─── Withdrawal Handlers ──────────────────────────────────────────
+  const handleRequestWithdrawal = async () => {
+    Swal.fire({
+      title: 'Request Complaint Withdrawal',
+      html: `
+        <div style="text-align: left; font-size: 14px; margin-bottom: 12px; color: #4B5563;">
+          You are requesting to withdraw your complaint.<br/><br/>
+          Submitting this request does not automatically close your complaint. Your request will be reviewed by the POSH Admin.<br/><br/>
+          The Internal Committee may continue the investigation if they believe that the matter involves serious policy violations or requires further inquiry under the POSH Act.
+        </div>
+        <div style="text-align: left;">
+          <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px;">Reason for Withdrawal * (Min 30 chars)</label>
+          <textarea id="swal-withdrawal-reason" class="swal2-textarea" placeholder="Enter detailed reason for withdrawal..." style="width: 100%; margin: 0; box-sizing: border-box; border-radius: 8px; height: 120px;"></textarea>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Submit Request',
+      confirmButtonColor: '#F59E0B',
+      cancelButtonColor: '#6B7280',
+      background: document.documentElement.classList.contains('dark') ? '#1E293B' : '#FFFFFF',
+      color: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#1F2937',
+      showLoaderOnConfirm: true,
+      allowOutsideClick: () => !Swal.isLoading(),
+      preConfirm: async () => {
+        const reason = document.getElementById('swal-withdrawal-reason').value
+        if (!reason || reason.trim().length < 30) {
+          Swal.showValidationMessage('Withdrawal reason must be at least 30 characters long.')
+          return false
+        }
+        try {
+          await requestComplaintWithdrawalService(complaint._id, { reason })
+          return true
+        } catch (err) {
+          Swal.showValidationMessage(err.response?.data?.message || 'Failed to submit withdrawal request.')
+          return false
+        }
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        toast.success('Withdrawal request submitted successfully.')
+        fetchData()
+      }
+    })
+  }
+
+  const handleApproveWithdrawal = async () => {
+    Swal.fire({
+      title: 'Approve Withdrawal Request',
+      html: `
+        <div style="text-align: left; font-size: 14px; margin-bottom: 12px; color: #4B5563;">
+          Approving this request will mark the complaint as Withdrawn.<br/><br/>
+          Depending on organizational policy, the case may either be closed or investigation may continue. This action will be permanently recorded.
+        </div>
+        <div style="text-align: left;">
+          <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px;">Admin Remarks *</label>
+          <textarea id="swal-admin-remarks" class="swal2-textarea" placeholder="Enter remarks..." style="width: 100%; margin: 0 0 16px 0; box-sizing: border-box; border-radius: 8px; height: 80px;"></textarea>
+          
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">
+            <input type="checkbox" id="swal-close-case" style="width: 16px; height: 16px;" checked />
+            Close associated case immediately?
+          </label>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Approve & Withdraw',
+      confirmButtonColor: '#10B981',
+      cancelButtonColor: '#6B7280',
+      background: document.documentElement.classList.contains('dark') ? '#1E293B' : '#FFFFFF',
+      color: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#1F2937',
+      showLoaderOnConfirm: true,
+      allowOutsideClick: () => !Swal.isLoading(),
+      preConfirm: async () => {
+        const adminRemarks = document.getElementById('swal-admin-remarks').value
+        const closeCase = document.getElementById('swal-close-case').checked
+        if (!adminRemarks || adminRemarks.trim() === '') {
+          Swal.showValidationMessage('Admin remarks are required to approve withdrawal.')
+          return false
+        }
+        try {
+          await approveComplaintWithdrawalService(complaint._id, { adminRemarks, closeCase })
+          return true
+        } catch (err) {
+          const errorMsg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to approve withdrawal request.';
+          Swal.showValidationMessage(errorMsg)
+          return false
+        }
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        toast.success('Withdrawal request approved successfully.')
+        fetchData()
+      }
+    })
+  }
+
+  const handleRejectWithdrawal = async () => {
+    Swal.fire({
+      title: 'Reject Withdrawal Request',
+      html: `
+        <div style="text-align: left; font-size: 14px; margin-bottom: 12px; color: #4B5563;">
+          Rejecting this request will restore the complaint to its previous status and the investigation will continue.
+        </div>
+        <div style="text-align: left;">
+          <label style="display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px;">Reason for Rejection *</label>
+          <textarea id="swal-reject-reason" class="swal2-textarea" placeholder="Enter reason for rejecting this withdrawal request..." style="width: 100%; margin: 0; box-sizing: border-box; border-radius: 8px; height: 100px;"></textarea>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Reject Request',
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      background: document.documentElement.classList.contains('dark') ? '#1E293B' : '#FFFFFF',
+      color: document.documentElement.classList.contains('dark') ? '#F3F4F6' : '#1F2937',
+      showLoaderOnConfirm: true,
+      allowOutsideClick: () => !Swal.isLoading(),
+      preConfirm: async () => {
+        const reason = document.getElementById('swal-reject-reason').value
+        if (!reason || reason.trim() === '') {
+          Swal.showValidationMessage('Rejection reason is mandatory.')
+          return false
+        }
+        try {
+          await rejectComplaintWithdrawalService(complaint._id, { reason })
+          return true
+        } catch (err) {
+          const errorMsg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to reject withdrawal request.';
+          Swal.showValidationMessage(errorMsg)
+          return false
+        }
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        toast.success('Withdrawal request rejected successfully.')
+        fetchData()
       }
     })
   }
@@ -695,6 +844,46 @@ export default function CaseDetails() {
         </div>
       )}
 
+      {/* ── Withdrawal Request Callouts & Admin Review ──────────────────────── */}
+      {complaint?.status === 'WITHDRAWAL_REQUESTED' && complaint?.withdrawalRequest?.status === 'PENDING' && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-5 rounded-2xl">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300">Withdrawal Request Pending Review</h3>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                The complainant requested to withdraw this complaint on {new Date(complaint.withdrawalRequest.requestedAt).toLocaleDateString()}.
+              </p>
+              <div className="mt-3 bg-white/50 dark:bg-black/20 rounded-lg p-3 text-sm text-slate-700 dark:text-slate-300">
+                <strong>Reason given:</strong><br/>
+                {complaint.withdrawalRequest.reason}
+              </div>
+              
+              {currentUser?.role === 'POSH_ADMIN' && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" variant="success" onClick={handleApproveWithdrawal}>
+                    Review & Approve
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={handleRejectWithdrawal}>
+                    Reject Request
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {complaint?.status === 'WITHDRAWN' && (
+        <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4.5 rounded-2xl text-slate-700 dark:text-slate-300">
+          <Info className="h-5 w-5 shrink-0 text-slate-500" />
+          <div className="text-xs">
+            <p className="font-bold">Complaint Withdrawn</p>
+            <p className="mt-0.5">This complaint was formally withdrawn by the employee and approved by the POSH Admin.</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
         <div>
@@ -705,6 +894,35 @@ export default function CaseDetails() {
         <div className="flex flex-wrap gap-2 items-center">
           <Badge variant={PRIORITY_VARIANT[priority] || 'neutral'}>{priority}</Badge>
           <Badge variant="info">Stage {currentStage + 1} / {WORKFLOW.length}</Badge>
+          
+          {(() => {
+            const uid = currentUser?._id?.toString();
+            const compId1 = caseData?.complainant?._id?.toString();
+            const compId2 = typeof caseData?.complainant === 'string' ? caseData.complainant : null;
+            const compId3 = complaint?.complainant?._id?.toString();
+            const compId4 = typeof complaint?.complainant === 'string' ? complaint.complainant : null;
+            
+            const isComplainant = uid && (uid === compId1 || uid === compId2 || uid === compId3 || uid === compId4);
+            
+            const canWithdraw = currentUser?.role === 'EMPLOYEE' && 
+                                isComplainant && 
+                                !['WITHDRAWAL_REQUESTED', 'WITHDRAWN', 'REJECTED', 'CLOSED'].includes(complaint?.status) && 
+                                (!caseData || !['CLOSED', 'POSH_ADMIN_REVIEW'].includes(caseData?.status));
+            
+            if (!canWithdraw) return null;
+            
+            return (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleRequestWithdrawal} 
+                disabled={['DRAFT', 'PENDING_REVIEW'].includes(complaint?.status)}
+                className="ml-2 border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Request Withdrawal
+              </Button>
+            );
+          })()}
           
           {currentUser?.role === 'POSH_ADMIN' && !caseData && (complaint?.status === 'PENDING_REVIEW' || complaint?.status === 'UNDER_REVIEW') && (
             <div className="flex items-center gap-2 ml-2">
@@ -1411,11 +1629,15 @@ export default function CaseDetails() {
                       ...hearings.slice(0, 2).map(h => ({ name: `Hearing_${h.scheduledAt?.split('T')[0]}.pdf`, size: '85 KB' })),
                       ...(caseData?.closure?.closedAt ? [{ name: 'Closure_Report.pdf', size: '320 KB' }] : []),
                     ].map((doc, idx) => (
-                      <div key={idx} className="flex flex-col items-center gap-2.5 rounded-2xl border border-slate-100 p-5 text-center hover:bg-slate-50/50 dark:border-white/5 dark:hover:bg-white/5 transition-all">
+                      <button 
+                        key={idx} 
+                        onClick={() => toast.info(`${doc.name} is currently being compiled and reviewed. It will be available for download soon.`)}
+                        className="flex flex-col items-center gap-2.5 rounded-2xl border border-slate-100 p-5 text-center hover:bg-slate-50/50 dark:border-white/5 dark:hover:bg-white/5 transition-all cursor-pointer w-full"
+                      >
                         <FileText className="h-9 w-9 text-[#2563EB]" />
                         <span className="truncate text-xs font-semibold text-slate-700 dark:text-slate-300 w-full">{doc.name}</span>
                         <span className="text-[10px] text-slate-400">{doc.size}</span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1424,11 +1646,11 @@ export default function CaseDetails() {
                 {tab === 'recommendations' && (
                   <div className="space-y-6">
                     {/* Recommendation Lock Screen if not at correct stage */}
-                    {!['COMMITTEE_RECOMMENDATION', 'POSH_ADMIN_REVIEW', 'CLOSED', 'APPEALED'].includes(caseData?.status) ? (
+                    {!['HEARING_SCHEDULED', 'COMMITTEE_RECOMMENDATION', 'POSH_ADMIN_REVIEW', 'CLOSED', 'APPEALED'].includes(caseData?.status) ? (
                       <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed rounded-2xl border-slate-200 dark:border-white/5 bg-slate-50/5">
                         <Lock className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
                         <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Recommendations Locked</h4>
-                        <p className="text-xs text-slate-400 mt-1 max-w-sm">Committee recommendation updates will unlock once all trial hearings are successfully completed.</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm">Committee recommendation updates will unlock once trial hearings are scheduled or completed.</p>
                       </div>
                     ) : (
                       <>
@@ -1453,7 +1675,7 @@ export default function CaseDetails() {
                               <Button size="sm" variant="success" onClick={() => handleRecommendationReview('APPROVED')}>
                                 Approve
                               </Button>
-                              <Button size="sm" variant="warning" onClick={() => handleRecommendationReview('RETURNED')}>
+                              <Button size="sm" variant="warning" onClick={() => handleRecommendationReview('RETURNED')}  className="bg-blue-300 text-white hover:bg-blue-400" >
                                 Return modifications
                               </Button>
                               <Button size="sm" variant="destructive" onClick={() => handleRecommendationReview('REJECTED')}>

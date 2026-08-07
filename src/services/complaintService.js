@@ -51,3 +51,18 @@ export const assignAdminToComplaintService = async (id, data) => {
   const res = await api.patch(`/complaints/${encodeURIComponent(id)}/assign-admin`, data)
   return res.data.data
 }
+
+export const requestComplaintWithdrawalService = async (id, data) => {
+  const res = await api.post(`/complaints/${encodeURIComponent(id)}/withdraw/request`, data)
+  return res.data.data
+}
+
+export const approveComplaintWithdrawalService = async (id, data) => {
+  const res = await api.post(`/complaints/${encodeURIComponent(id)}/withdraw/approve`, data)
+  return res.data.data
+}
+
+export const rejectComplaintWithdrawalService = async (id, data) => {
+  const res = await api.post(`/complaints/${encodeURIComponent(id)}/withdraw/reject`, data)
+  return res.data.data
+}

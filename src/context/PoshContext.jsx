@@ -11,6 +11,8 @@ export function PoshProvider({ children }) {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
   // Company settings loaded from localStorage
   const [companySettings, setCompanySettings] = useState(() => {
     const saved = localStorage.getItem('posh_company_settings')
@@ -25,8 +27,7 @@ export function PoshProvider({ children }) {
     }
   })
 
-  // Rehydrate user from backend on mount (validates token is still valid)
-  useEffect(() => {
+  const revalidateAuth = useCallback(async () => {
     const token = localStorage.getItem('posh_token')
     const expires = localStorage.getItem('posh_token_expires')
     
@@ -34,6 +35,7 @@ export function PoshProvider({ children }) {
     if (token && expires && Date.now() > parseInt(expires)) {
       clearSession()
       setAuthLoading(false)
+      setCurrentUser(null)
       return
     }
     
@@ -41,17 +43,46 @@ export function PoshProvider({ children }) {
       setAuthLoading(false)
       return
     }
-    getMeService()
-      .then((user) => {
-        setCurrentUser(user)
-        localStorage.setItem('posh_user', JSON.stringify(user))
-      })
-      .catch(() => {
+
+    try {
+      const user = await getMeService()
+      setCurrentUser(user)
+      localStorage.setItem('posh_user', JSON.stringify(user))
+    } catch (err) {
+      // If it's an explicit 401/403, we must log out.
+      // If there is no response (network error) or 500, we DO NOT log out.
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
         clearSession()
         setCurrentUser(null)
-      })
-      .finally(() => setAuthLoading(false))
+      }
+    } finally {
+      setAuthLoading(false)
+    }
   }, [])
+
+  // Network Event Listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false)
+      toast.success('Connection restored! Revalidating...')
+      // Controlled revalidation after reconnect
+      revalidateAuth()
+    }
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [revalidateAuth])
+
+  // Rehydrate user from backend on mount
+  useEffect(() => {
+    revalidateAuth()
+  }, [revalidateAuth])
 
   const login = useCallback((token, user, rememberMe = false) => {
     setSession(token, user, rememberMe)
@@ -74,6 +105,7 @@ export function PoshProvider({ children }) {
       currentUser,
       setCurrentUser,
       authLoading,
+      isOffline,
       login,
       handleLogout,
       companySettings,
